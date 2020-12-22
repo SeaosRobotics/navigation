@@ -54,6 +54,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Point.h>
+#include <move_base_msgs/MoveBaseActionGoal.h>
 
 #include <tf2_ros/buffer.h>
 
@@ -106,6 +107,9 @@ namespace base_local_planner {
        */
       ~TrajectoryPlannerROS();
       
+    
+      void callback_goal(const move_base_msgs::MoveBaseActionGoal::ConstPtr & msg);
+
       /**
        * @brief  Given the current position, orientation, and velocity of the robot,
        * compute velocity commands to send to the base
@@ -214,8 +218,10 @@ namespace base_local_planner {
       bool rotating_to_goal_;
       bool reached_goal_;
       bool latch_xy_goal_tolerance_, xy_tolerance_latch_;
+      double goal_x, goal_y;
 
       ros::Publisher g_plan_pub_, l_plan_pub_;
+      ros::Subscriber goal_sub_;
 
       dynamic_reconfigure::Server<BaseLocalPlannerConfig> *dsrv_;
       base_local_planner::BaseLocalPlannerConfig default_config_;

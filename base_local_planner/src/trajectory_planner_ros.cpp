@@ -61,6 +61,11 @@ PLUGINLIB_EXPORT_CLASS(base_local_planner::TrajectoryPlannerROS, nav_core::BaseL
 
 namespace base_local_planner {
 
+  void TrajectoryPlannerROS::callback_goal(const move_base_msgs::MoveBaseActionGoal::ConstPtr & msg) {
+    goal_x = msg->goal.target_pose.pose.position.x;
+    goal_y = msg->goal.target_pose.pose.position.y;
+  }
+
   void TrajectoryPlannerROS::reconfigureCB(BaseLocalPlannerConfig &config, uint32_t level) {
       if (setup_ && config.restore_defaults) {
         config = default_config_;
@@ -94,12 +99,14 @@ namespace base_local_planner {
       ros::NodeHandle private_nh("~/" + name);
       g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
       l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
+      goal_sub_ = private_nh.subscribe<move_base_msgs::MoveBaseActionGoal>("goal", 1, &TrajectoryPlannerROS::callback_goal, this);
 
 
       tf_ = tf;
       costmap_ros_ = costmap_ros;
       rot_stopped_velocity_ = 1e-2;
       trans_stopped_velocity_ = 1e-2;
+      goal_x = goal_y = 0.0;
       double sim_time, sim_granularity, angular_sim_granularity;
       int vx_samples, vtheta_samples;
       double path_distance_bias, goal_distance_bias, occdist_scale, heading_lookahead, oscillation_reset_dist, escape_reset_dist, escape_reset_theta;
@@ -433,15 +440,15 @@ namespace base_local_planner {
 
     const geometry_msgs::PoseStamped& goal_point = transformed_plan.back();
     //we assume the global goal is the last point in the global plan
-    const double goal_x = goal_point.pose.position.x;
-    const double goal_y = goal_point.pose.position.y;
+    const double goal_pose_x = goal_x;
+    const double goal_pose_y = goal_y;
 
     const double yaw = tf2::getYaw(goal_point.pose.orientation);
 
     double goal_th = yaw;
 
     //check to see if we've reached the goal position
-    if (xy_tolerance_latch_ || (getGoalPositionDistance(global_pose, goal_x, goal_y) <= xy_goal_tolerance_)) {
+    if (xy_tolerance_latch_ || (getGoalPositionDistance(global_pose, goal_pose_x, goal_pose_y) <= xy_goal_tolerance_)) {
 
       //if the user wants to latch goal tolerance, if we ever reach the goal location, we'll
       //just rotate in place
